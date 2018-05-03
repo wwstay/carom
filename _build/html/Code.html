@@ -1,0 +1,1132 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>The Match-Maker documentation Code &#8212; Deduplication/Entity Resolution of supplier database  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="The theory behind the model of Match-Maker" href="Theory.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-match-maker-documentation-code">
+<h1>The Match-Maker documentation Code<a class="headerlink" href="#the-match-maker-documentation-code" title="Permalink to this headline">¶</a></h1>
+<p>There are three files.</p>
+<ol class="arabic simple">
+<li>Deduplication_algo.py</li>
+<li>CoreBGgeneration.py</li>
+<li>prepare_4_EM.py</li>
+</ol>
+<p>Below we provide the code docs for all three in the respective order.</p>
+<hr class="docutils" />
+<div class="section" id="the-core-file-that-connects-them-all-deduplication-algo-py">
+<h2>The core file that connects them all (Deduplication_algo.py)<a class="headerlink" href="#the-core-file-that-connects-them-all-deduplication-algo-py" title="Permalink to this headline">¶</a></h2>
+<p>This is the main file that links two database entries. Look through the main function to see that names of the supplier is enough for match making to begin. CSV-CSV comparison will be added soon.</p>
+<span class="target" id="module-Deduplication_algo"></span><dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">DB_dedup</code><span class="sig-paren">(</span><em>supplier_name1</em>, <em>supplier_name2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#DB_dedup"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>The wrapper that just takes two supplier names and calls other functions to complete the match making</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>supplier_name1</strong> (<em>str</em>) – The name of the collection 1 in supplier_static_database</li>
+<li><strong>supplier_name2</strong> (<em>str</em>) – The name of the collection 2 in supplier_static_database</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The final dataframe with mapped properties</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">add_vals_to_vectdic</code><span class="sig-paren">(</span><em>odict</em>, <em>addict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#add_vals_to_vectdic"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function creates a dictionary that contains the probabilistic values of words of both the tables.
+So a key would be the word and the value would be a list (of max 2 elements when comparing 2 and if one word doesn’t exist in both tables then only 1)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>odict</strong> (<em>dict</em>) – An ordered dictionary passed in with vals as list and keys as words</li>
+<li><strong>addict</strong> (<em>dict</em>) – The probabilities of each words you want to append to the ordered dictionary</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A ordered dictionary where the keys are words and values are lists of probabilities from different tables</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">check_result</code><span class="sig-paren">(</span><em>inp1</em>, <em>inp2</em>, <em>idcolumn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#check_result"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>A function used to check accuracy, and extract values that were predicted wrong.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inp1</strong> (<em>DataFrame</em>) – Matched dataframe according to model</li>
+<li><strong>inp2</strong> (<em>DataFrame</em>) – The original dataframe to which matching occured with human matched values</li>
+<li><strong>idcolumn</strong> (<em>str</em>) – The column name where the algorithm outputted the matches</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Three DataFrames that include the merged dataframe after prediction, the ones that were wrong and the third dataframe with the wrong outputs merged with table 2.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">triplet</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">city_wide_dedup</code><span class="sig-paren">(</span><em>cityparam1</em>, <em>cityparam2</em>, <em>city_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#city_wide_dedup"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>The algorithm that is being run in parallel and matching properties city by city</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cityparam1</strong> (<em>DataFrame</em>) – The subset of properties from table 1 of a particular city</li>
+<li><strong>cityparam2</strong> (<em>DataFrame</em>) – The subset of properties from table 2 of a particular city</li>
+<li><strong>city_name</strong> (<em>str</em>) – Name of the city we are subsetting</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dataframe same as cityparam1 with predicted matches appended in a new column called “final_mapped”</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">city_wide_distr</code><span class="sig-paren">(</span><em>params</em>, <em>alpha</em>, <em>filename</em>, <em>save=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#city_wide_distr"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Creates required probability distribution of names and addresses</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>params</strong> (<em>DataFrame</em>) – The dataframe of cleaned and tokenized properties with names and addresses</li>
+<li><strong>alpha</strong> (<em>float</em>) – The weight of core words. If alpha is 1, all words are regarded as core words and if alpha is 0 all words are regarded as background</li>
+<li><strong>filename</strong> (<em>str</em>) – Name to save distributions to pickle file. Would work if save is True.</li>
+<li><strong>save</strong> (<em>bool</em>) – If save is True, it will save the distribution to pickle file.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(core probability of words in hotel names, core probability of words in hotel addresses)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pair</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">create_distribution</code><span class="sig-paren">(</span><em>prop1</em>, <em>prop2</em>, <em>supplier_name1</em>, <em>supplier_name2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#create_distribution"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function is the heart. Running this runs your whold deduplication between supplier_name1 and supplier_name2.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This function contains parallel programming. The problem of PP hasn’t been fixed and I urge you to take a look and solve that.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prop1</strong> (<em>DataFrame</em>) – DataFrame object for property 1 we are using to compare</li>
+<li><strong>prop2</strong> (<em>DataFrame</em>) – DataFrame object for property 2 we are using to compare</li>
+<li><strong>supplier_name1</strong> (<em>str</em>) – Name of table where we got prop1 properties from</li>
+<li><strong>supplier_name2</strong> (<em>str</em>) – Name of table where we got prop2 properties from</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The overall matched resolved dataframe.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">distprobs</code><span class="sig-paren">(</span><em>row</em>, <em>data2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#distprobs"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>A wrapper to apply haversine distance metric to entries between a row in dataframe1 to every entry in dataframe2</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row</strong> (<em>Series</em>) – A row of a dataframe1</li>
+<li><strong>data2</strong> (<em>DataFrame</em>) – The dataframe to match dataframe1 with.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A series of haveresine closeness for entry in row 1 with every entry in data2</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Series</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">gen_probvec</code><span class="sig-paren">(</span><em>name</em>, <em>pCdict</em>, <em>i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#gen_probvec"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Generates a vector of length number of words (each words corresponds to an index). For each hotel name/address the vector this function generates is:
+The core probability of word in each idx corresponding to words of the hotel name/address.
+(So if our total table was- “Hotel A” and “B” the vector would be of dim 3 and for “Hotel A” the vector would be [p(hotel),p(A),0] )</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>list</em>) – A list of tokenized words</li>
+<li><strong>pCdict</strong> (<em>dict</em>) – A dictionary containing the probability of word being core as a list for both tables</li>
+<li><strong>i</strong> (<em>int</em>) – index number indicating whether it comes from table 1 or 2</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A sparse vector of num_words dimension with probabilities.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">genreg_vec</code><span class="sig-paren">(</span><em>name</em>, <em>pCdict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#genreg_vec"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Generates a vector of length number of words (each words corresponds to an index). For each hotel name/address the vector this function generates is:
+For each word in a particular name/address, the vector has a 1 and for the rest 0.
+So if our total table was - “hotel A”,”b” then the vector would be 3 dimensional and for “hotel A” this function would spit out would be [1,1,0]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>list</em>) – A list of tokenized words</li>
+<li><strong>pCdict</strong> (<em>dict</em>) – A dictionary containing the probability of a word being core (key=word, val=probability)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A one hot vector of num_of_words dimension</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">getColsfromdb</code><span class="sig-paren">(</span><em>supplier_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#getColsfromdb"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Monary requires column names and their respective types as input for its query. Thif function obtains the column names and a list of their respective types are generated.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">There is a better way to get types along with names by mongo programming. If interested contact me, and I will send you an email from the guy who wrote monary.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>supplier_name</strong> (<em>str</em>) – Name of the collection in supplier_static_database</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A pair of lists. (the column names,their respective types)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pair</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">getMonaryDF</code><span class="sig-paren">(</span><em>supplier_name</em>, <em>colnames</em>, <em>types</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#getMonaryDF"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function generates the dataframe extracted from mongodb</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>supplier_name</strong> (<em>str</em>) – The name of the collection in supplier_static_database</li>
+<li><strong>colnames</strong> (<em>list</em>) – List of column names of the collection</li>
+<li><strong>types</strong> (<em>list</em>) – List of column types of the collection</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The extracted dataframe from mongodb</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">DataFrame</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">get_cossim</code><span class="sig-paren">(</span><em>row2</em>, <em>row1</em>, <em>vect_name</em>, <em>vect_addr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#get_cossim"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Gets the cossine similarity between two vectors. It concatenates vectors of name and address into a larger dimensional vector and computes the cossine similarity
+This function is used as an apply function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row2</strong> (<em>Series</em>) – A row of a dataframe2</li>
+<li><strong>row1</strong> (<em>Series</em>) – A row of a dataframe1</li>
+<li><strong>vect_name</strong> (<em>dict</em>) – The cumulative vector dictionary made from makecumulativedict for names</li>
+<li><strong>vect_addr</strong> (<em>dict</em>) – The cumulative vector dictionary made from makecumulativedict for addresses</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The similarity measure</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">haverdist</code><span class="sig-paren">(</span><em>row2</em>, <em>row1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#haverdist"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>A function that computes haversine distance between two pairs of latitudes and longitudes
+Used as an apply function</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row2</strong> (<em>Series</em>) – A row of a dataframe2</li>
+<li><strong>row1</strong> (<em>Series</em>) – A row of a dataframe1</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">1-haversine_distance between entry in row1 and entry in row2. So 1 indicates on top of each other, while 0 indicates very far.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#main"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>main function to start with. This will make a comparison between two properties belonging to mongo. Right now it is tuned to hotelbeds_properties and taap_properties. Update those for different suppliers.
+Also calculates the time taken for the whole process to run from start to finish.
+:param None:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">makecumulativedict</code><span class="sig-paren">(</span><em>p_corename1</em>, <em>p_corename2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#makecumulativedict"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function appends different word:prob dictionary for each table to a single dict with all words.
+(so the new dict has word:[prob1,prob2] for words common in both tables). This function is useful to produce vectors of probabilities (running gen_probvec)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>p_corename1</strong> (<em>dict</em>) – Dictionary of word:probability from table 1</li>
+<li><strong>p_corename2</strong> (<em>dict</em>) – Dictionary of word:probability from table 2</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A combined dictionary of word:list(probs) of both tables</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">OrderedDict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">matching</code><span class="sig-paren">(</span><em>row2</em>, <em>row1</em>, <em>pCname_self</em>, <em>pCaddr_self</em>, <em>pCsent_name</em>, <em>pCsent_addr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#matching"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function runs the dedup algorithm from CoreBGgeneration for hotel names and addresses.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row2</strong> (<em>Series</em>) – A row of a dataframe2</li>
+<li><strong>row1</strong> (<em>Series</em>) – A row of a dataframe1</li>
+<li><strong>pCname_self</strong> – The word core probabilities for hotel names in dataframe2</li>
+<li><strong>pCaddr_self</strong> – The word core probabilities for hotel addresses in dataframe2</li>
+<li><strong>pCsent_name</strong> – The word core probabilities for hotel names in dataframe1</li>
+<li><strong>pCsent_addr</strong> – The word core probabilities for hotel addresses in dataframe1</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The probability of being a match.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">matchrecord</code><span class="sig-paren">(</span><em>row</em>, <em>pCname_self</em>, <em>pCaddr_self</em>, <em>data2</em>, <em>pCname2</em>, <em>pCaddr2</em>, <em>vect_name</em>, <em>vect_addr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#matchrecord"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function combines all different models and methods into one and provides the best match as result.
+.. note:: This needs to improve in terms of how much weight/how much should we listen to which model. This is a common ensemble method problem, and should be solved with the training set provided.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row</strong> (<em>Series</em>) – A row of a dataframe1</li>
+<li><strong>pCname_self</strong> (<em>dict</em>) – The word core probabilities for hotel names in dataframe1</li>
+<li><strong>pCaddr_self</strong> (<em>dict</em>) – The word core probabilities for hotel addresses in dataframe1</li>
+<li><strong>data2</strong> (<em>DataFrame</em>) – The dataframe to match with</li>
+<li><strong>pCname2</strong> (<em>dict</em>) – The word core probabilities for hotel names in dataframe2</li>
+<li><strong>pCaddr2</strong> (<em>dict</em>) – The word core probabilities for hotel addresses in dataframe2</li>
+<li><strong>vect_name</strong> (<em>dict</em>) – An ordered dictionary of words of names from both DataFrames</li>
+<li><strong>vect_addr</strong> (<em>dict</em>) – An ordered dictionary of words of addresses from both DataFrames</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The index with the maximum probability of being a match, or “none” if none found</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">Deduplication_algo.</code><code class="descname">vect_matchmaker</code><span class="sig-paren">(</span><em>row</em>, <em>vect_name</em>, <em>vect_addr</em>, <em>data2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/Deduplication_algo.html#vect_matchmaker"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>A wrapper to apply cossine similarity measure for each row in dataframe2. This function is used as an apply function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>row</strong> (<em>Series</em>) – A row of a dataframe1</li>
+<li><strong>vect_name</strong> (<em>dict</em>) – An ordered dictionary of words of names from both DataFrames</li>
+<li><strong>vect_addr</strong> (<em>dict</em>) – An ordered dictionary of words of addresses from both DataFrames</li>
+<li><strong>data2</strong> (<em>DataFrame</em>) – The whole second dataframe to match with</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A series of cossine similarities of row with every single entry in data2</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Series</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<hr class="docutils" />
+<div class="section" id="the-probability-generating-module-corebggeneration-py">
+<h2>The Probability generating module (CoreBGgeneration.py)<a class="headerlink" href="#the-probability-generating-module-corebggeneration-py" title="Permalink to this headline">¶</a></h2>
+<p>This is the module used to generate probability distributions that is used to find a match.</p>
+<span class="target" id="module-CoreBGgeneration"></span><dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">abbrv_func</code><span class="sig-paren">(</span><em>s1</em>, <em>s2</em>, <em>pr1</em>, <em>pr2</em>, <em>n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#abbrv_func"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>If I abbreviate Cafe Coffee Day to CCD, they both are still the same, this creates abbreviations and checks if same.</p>
+<p>If they are the same words then each of their probabilities are multiplied (of being core or background)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s1</strong> (<em>list</em>) – tokenized sentence from first table</li>
+<li><strong>s2</strong> (<em>list</em>) – tokenized sentence from second table</li>
+<li><strong>pr1</strong> (<em>dict</em>) – core probability distribution of the words of first table</li>
+<li><strong>pr2</strong> (<em>dict</em>) – core probability distribution of the words of second table</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">probability of match</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">assrtbg</code><span class="sig-paren">(</span><em>word</em>, <em>pofcore</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#assrtbg"><span class="viewcode-link">[source]</span></a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>word</strong> (<em>str</em>) – A word</li>
+<li><strong>pofcore</strong> (<em>dict</em>) – Core probability distribution</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">probabilities of being background</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">assrtcore</code><span class="sig-paren">(</span><em>word</em>, <em>pofcore</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#assrtcore"><span class="viewcode-link">[source]</span></a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>word</strong> (<em>str</em>) – A word</li>
+<li><strong>pofcore</strong> (<em>dict</em>) – Core probability distribution</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">probabilities of being core (float)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">core_algo1</code><span class="sig-paren">(</span><em>names</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#core_algo1"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Run the EM algorithm that updates the distribution until some degree of convergence
+The convergence criteria chosen is the number of field entries.
+Starts with term frequency distribution and then updates until convergence</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>names</strong> – The list of list/series of lists of tokenized records that are to be deduplicated.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">(prob_C,prob_B); converged probability distributions C (core) and B (background)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pair</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">coreprob</code><span class="sig-paren">(</span><em>pC</em>, <em>pB</em>, <em>alpha</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#coreprob"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>This function takes the probability distributions generated from the EM algorithm and runs the formula:</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[P(w) = \frac{\alpha\cdot C(w)}{\alpha\cdot C(w) + (1-\alpha )\cdot B(w)}\]</div>
+</div></blockquote>
+<p>where w is the word.</p>
+<p>Alpha indicates the weight. If alpha is 0 all words are background, if alpha is 1 all words are core.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>pC</strong> (<em>dict</em>) – The probability distribution of Core words</li>
+<li><strong>pB</strong> (<em>dict</em>) – The probability distribution of background words</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the final probability a word is a core or not.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">dedup</code><span class="sig-paren">(</span><em>sent1</em>, <em>sent2</em>, <em>pofcore1</em>, <em>pofcore2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#dedup"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>The core deduplication algorithm. It takes in two sentences (sent1 and sent2) and the probability distribution of core words.</p>
+<p>The algorithm starts by separating words that are in common. Those words in common should be core words in both or background words in both.
+Those not common should be background words in their respective tables.</p>
+<p>We incorporate edit functions (abbreviation and distance metric) and generate probabilities from them.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sent1</strong> (<em>list</em>) – tokenized sentence from first table</li>
+<li><strong>sent2</strong> (<em>list</em>) – tokenized sentence from second table</li>
+<li><strong>pofcore1</strong> (<em>dict</em>) – core probability distribution of the table where sent1 came from</li>
+<li><strong>pofcore2</strong> (<em>dict</em>) – core probability distribution of the table where sent2 came from.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Probability of sent1 being a match with sent2</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">distmetric</code><span class="sig-paren">(</span><em>s1</em>, <em>s2</em>, <em>pr1</em>, <em>pr2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#distmetric"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Calculate edit distance, if (1-edit distance) or how many characters do we retain&gt;75% of the length,
+then we probably have a misspelling, and we can assert that both are the same.</p>
+<p>Being the same implies, both are either core or both are background.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s1</strong> (<em>list</em>) – sentence from first table</li>
+<li><strong>s2</strong> (<em>list</em>) – sentence from second table</li>
+<li><strong>pr1</strong> (<em>dict</em>) – core probability distribution of the words of first table</li>
+<li><strong>pr2</strong> (<em>dict</em>) – core probability distribution of the words of second table</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the probability of being a match</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">edit_func</code><span class="sig-paren">(</span><em>s1</em>, <em>s2</em>, <em>pr1</em>, <em>pr2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#edit_func"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Added edit functions that can factor into the probability. The two called in here are
+misspelling and abbreviation. Abbreviation is currently switched off.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s1</strong> (<em>list</em>) – sentence from first table</li>
+<li><strong>s2</strong> (<em>list</em>) – sentence from second table</li>
+<li><strong>pr1</strong> (<em>dict</em>) – core probability distribution of the words of first table</li>
+<li><strong>pr2</strong> (<em>dict</em>) – core probability distribution of the words of second table</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">representing probabilities of two sentences to be the same after edits.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">flatten2one</code><span class="sig-paren">(</span><em>xS</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#flatten2one"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Reduces a series of lists (list of lists) down to a single list. Used as a apply function on Series data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>xS</strong> – A list of lists.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">reduced single list containing all entities.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">initial_probs</code><span class="sig-paren">(</span><em>lis_names</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#initial_probs"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Generate initial uniform distribution. The distribution is simply the frequency
+of the occurance of the word divided by the total number of words. (Term freq.)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>lis_names</strong> – List of lists of all records tokenized from table</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A dictionary of the word as key and term-frequency prob as value. (string:float)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">loaddistributions</code><span class="sig-paren">(</span><em>filename</em>, <em>cityname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#loaddistributions"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Load the saved tokenized features from prepare_4_EM file, run EM algorithm and return the probabilities of address and names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filename</strong> (<em>str</em>) – Name of file where the tokenized features are stored</li>
+<li><strong>cityname</strong> (<em>str</em>) – Name of the city subset where deduplication is to occur</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(pcore_name,pcore_addr) i.e the core probability distribution of the hotel names and hotel addresses for all the properties in that record</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pair</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">test_sample</code><span class="sig-paren">(</span><em>alpha</em>, <em>pC</em>, <em>pB</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#test_sample"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>A test function to test my dedup algorithm. Not important. Ignore
+:param alpha: The weightage of word being core
+:type alpha: float
+:param pC: The probability distribution of Core words
+:type pC: dict
+:param pB: The probability distribution of background words
+:type pB: dict</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">update_weights</code><span class="sig-paren">(</span><em>Z</em>, <em>C</em>, <em>B</em>, <em>networds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#update_weights"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>After getting new z(w), update the parameters/distributions C and B to better represent the data.
+This is the update step in the EM algorithm. For details: <a class="reference external" href="http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf">http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>Z</strong> (<em>list</em>) – the distribution containing all z.</li>
+<li><strong>C</strong> (<em>dict</em>) – the probability distribution of core words</li>
+<li><strong>B</strong> (<em>dict</em>) – the probability distribution of background words</li>
+<li><strong>networds</strong> (<em>int</em>) – Total number of words (in the whole table)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(c,b) containing the updated probabilitiy distribution (core, background)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pair</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">CoreBGgeneration.</code><code class="descname">word_estimation</code><span class="sig-paren">(</span><em>name</em>, <em>C</em>, <em>B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/CoreBGgeneration.html#word_estimation"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Calculate z(word). This is the probability of word belonging to core.
+For more information, read this paper: <a class="reference external" href="http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf">http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>list</em>) – The hotel name or address tokenized into words</li>
+<li><strong>C</strong> (<em>dict</em>) – The probability distribution of core words</li>
+<li><strong>B</strong> (<em>dict</em>) – The probability distribution of background words</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dictionary of (word,probability) pairs. keys are words, values are floats</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<hr class="docutils" />
+<div class="section" id="the-preparation-module-prepare-4-em-py">
+<h2>The preparation module (prepare_4_EM.py)<a class="headerlink" href="#the-preparation-module-prepare-4-em-py" title="Permalink to this headline">¶</a></h2>
+<p>Cleaning and parameterization of raw input is done here.</p>
+<span class="target" id="module-prepare_4_EM"></span><dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">dumpstopwords</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#dumpstopwords"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Dumps stop words that are to be removed (words such as is, and, the, etc.) into a pickle file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>None</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">findidx</code><span class="sig-paren">(</span><em>StemWords</em>, <em>word</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#findidx"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Gets the word to replace. So if word is “road”, it will replace it with “rd”</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>StemWords</strong> – A dictionary where keys are stemmed words (like “rd”) and values are lists that are long/other forms of the key (like road)</li>
+<li><strong>word</strong> – The word in question, whether to replace or not.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A word, either replaced(stemmed) or the same word.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">flatten2one</code><span class="sig-paren">(</span><em>xS</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#flatten2one"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Reduces a series of lists (list of lists) down to a single list. Used as a apply function on Series data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>xS</strong> – A pandas series of lists.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">reduced single list containing all entities.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">get_relevcols</code><span class="sig-paren">(</span><em>df</em>, <em>colname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#get_relevcols"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Get 1 or more columns that contains a particular name. Certain tables have more than one address column in dataframe.
+This function allows you to get all columns that contain a particular name (such as address)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>df</strong> – The dataframe that has all details of hotel properties</li>
+<li><strong>colname</strong> – The name of the column you want to pick out</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A list of column names that correspond to colname.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">gramclean</code><span class="sig-paren">(</span><em>x</em>, <em>stop_words</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#gramclean"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Removes punctuation, stop words and cleans the sentence and gives back the whole sentence
+Used in a apply function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> – A sentence from pandas series. (Hotel name or hotel address)</li>
+<li><strong>stop_words</strong> – Set containing not useful words (is, that, the etc.)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A string that is the cleaned sentence</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">loadfilters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#loadfilters"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Generates stop words and the stemming dictionary required to clean the data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>None</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">(set of stop words, stemming words dictionary)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">pair</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">preclean</code><span class="sig-paren">(</span><em>dat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#preclean"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Removes words that have an extra ‘s’ after like inns,hotels is stemmed to inn,hotel</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dat</strong> – A series column containing tokenized words</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A series with cleaned sentences.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Series</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">prepareem</code><span class="sig-paren">(</span><em>prop_subdf</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#prepareem"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Prepares features for the EM algorithm. The core component of this file.
+The function cleans data, tokenizes it, changes transliterates unicode to ascii, removes stop/common words and
+builds the feature set needed for running EM.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prop_subdf</strong> – Pandas dataframe containing table from mongodb dump</li>
+<li><strong>name</strong> – Name of the table or supplier from which this table originated (string)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Ready to use dataframe for EM algorithm</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dataframe</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">stemmer</code><span class="sig-paren">(</span><em>x</em>, <em>stemdic</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#stemmer"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Strip sentence into individual words, removing spaces and punctuation.
+Then replaces words with their stemmed counterparts given by the StemWords (a dictionary of words and their stem)</p>
+<p>Runs function findidx on series row data. This is used as an apply function on Series.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> – The sentence provided by a pandas series (usually hotel name or address)</li>
+<li><strong>stemdic</strong> – Dictionary containing a list of words as values and their stemmed counterparts as keys</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">list of tokenized words. (So a sentence becomes a list of stripped and stemmed words)</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt>
+<code class="descclassname">prepare_4_EM.</code><code class="descname">translittunicode</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/prepare_4_EM.html#translittunicode"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Translitterate unicode to ASCII. Used as apply function</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> – A unicode string</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A decoded ASCII string</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The Match-Maker documentation Code</a><ul>
+<li><a class="reference internal" href="#the-core-file-that-connects-them-all-deduplication-algo-py">The core file that connects them all (Deduplication_algo.py)</a></li>
+<li><a class="reference internal" href="#the-probability-generating-module-corebggeneration-py">The Probability generating module (CoreBGgeneration.py)</a></li>
+<li><a class="reference internal" href="#the-preparation-module-prepare-4-em-py">The preparation module (prepare_4_EM.py)</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Theory.html" title="previous chapter">The theory behind the model of Match-Maker</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Code.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Shubhang Goswami.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/Code.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

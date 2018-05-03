@@ -1,0 +1,10 @@
+{
+    "dev": {
+        "app_function": "app", 
+        "aws_region": "ap-southeast-1", 
+        "profile_name": "default", 
+        "project_name": "carom", 
+        "runtime": "python2.7", 
+        "s3_bucket": "zappa-carom"
+    }
+}

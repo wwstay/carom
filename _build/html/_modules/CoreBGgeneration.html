@@ -1,0 +1,586 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>CoreBGgeneration &#8212; Deduplication/Entity Resolution of supplier database  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for CoreBGgeneration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: CoreBGgeneration</span>
+<span class="sd">   :synopsis: The generator of probability distributions</span>
+
+<span class="sd">.. moduleauthor:: Shubhang Goswami &lt;shubhang@wwstay.com&gt;\</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pk</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">editdistance</span>
+
+
+
+<div class="viewcode-block" id="flatten2one"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.flatten2one">[docs]</a><span class="k">def</span> <span class="nf">flatten2one</span><span class="p">(</span><span class="n">xS</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reduces a series of lists (list of lists) down to a single list. Used as a apply function on Series data.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        xS: A list of lists.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list: reduced single list containing all entities.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">sub_list</span> <span class="ow">in</span> <span class="n">xS</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sub_list</span><span class="p">]</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="initial_probs"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.initial_probs">[docs]</a><span class="k">def</span> <span class="nf">initial_probs</span><span class="p">(</span><span class="n">lis_names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate initial uniform distribution. The distribution is simply the frequency</span>
+<span class="sd">    of the occurance of the word divided by the total number of words. (Term freq.)</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        lis_names: List of lists of all records tokenized from table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary of the word as key and term-frequency prob as value. (string:float)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">vocab_ctr</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">((</span><span class="n">flatten2one</span><span class="p">(</span><span class="n">lis_names</span><span class="p">)))</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">networds</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flatten2one</span><span class="p">(</span><span class="n">lis_names</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">networds</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">prob</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">vocab_ctr</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">prob</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">=</span><span class="n">v</span><span class="o">/</span><span class="n">networds</span>
+    <span class="k">return</span> <span class="n">prob</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="word_estimation"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.word_estimation">[docs]</a><span class="k">def</span> <span class="nf">word_estimation</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">B</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate z(word). This is the probability of word belonging to core.</span>
+<span class="sd">    For more information, read this paper: http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf </span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        name (list): The hotel name or address tokenized into words</span>
+<span class="sd">        C    (dict): The probability distribution of core words </span>
+<span class="sd">        B    (dict): The probability distribution of background words</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary of (word,probability) pairs. keys are words, values are floats  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">z</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+    <span class="n">denom</span><span class="o">=</span><span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+        <span class="n">denom</span><span class="o">+=</span><span class="n">C</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">B</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">+</span><span class="mf">1e-10</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+         <span class="n">z</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">C</span><span class="p">[</span><span class="n">word</span><span class="p">]</span><span class="o">/</span><span class="p">((</span><span class="n">B</span><span class="p">[</span><span class="n">word</span><span class="p">]</span><span class="o">+</span><span class="mf">1e-10</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">denom</span><span class="o">+</span><span class="mf">1e-10</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">z</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="update_weights"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.update_weights">[docs]</a><span class="k">def</span> <span class="nf">update_weights</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">networds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    After getting new z(w), update the parameters/distributions C and B to better represent the data.</span>
+<span class="sd">    This is the update step in the EM algorithm. For details: http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        Z (list): the distribution containing all z.</span>
+<span class="sd">        C (dict): the probability distribution of core words</span>
+<span class="sd">        B (dict): the probability distribution of background words</span>
+<span class="sd">        networds (int): Total number of words (in the whole table)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pair: (c,b) containing the updated probabilitiy distribution (core, background)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">c</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+    <span class="n">b</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">C</span><span class="p">:</span>
+        <span class="c1">#print word</span>
+        <span class="n">new_c</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">new_b</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">Z</span><span class="p">:</span>
+            <span class="c1">#print z,</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">z</span><span class="p">:</span>
+                <span class="c1">#print z[word]</span>
+                <span class="n">new_c</span><span class="o">+=</span><span class="n">z</span><span class="p">[</span><span class="n">word</span><span class="p">]</span>
+                <span class="n">new_b</span><span class="o">+=</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">z</span><span class="p">[</span><span class="n">word</span><span class="p">])</span>
+    
+        <span class="n">new_c</span><span class="o">=</span><span class="n">new_c</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>
+        <span class="n">new_b</span><span class="o">=</span><span class="n">new_b</span><span class="o">/</span><span class="p">(</span><span class="n">networds</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-07</span><span class="p">)</span>
+        <span class="c1">#print &quot;new C({}): &quot;.format(word), new_c</span>
+        <span class="n">c</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_c</span>
+        <span class="n">b</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_b</span>
+        <span class="c1">#print &quot;next&quot;</span>
+    
+    <span class="c1">#print c</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">c</span><span class="p">,</span><span class="n">b</span><span class="p">)</span></div>
+    
+
+
+
+
+<span class="c1">#</span>
+<div class="viewcode-block" id="core_algo1"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.core_algo1">[docs]</a><span class="k">def</span> <span class="nf">core_algo1</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run the EM algorithm that updates the distribution until some degree of convergence</span>
+<span class="sd">    The convergence criteria chosen is the number of field entries.</span>
+<span class="sd">    Starts with term frequency distribution and then updates until convergence</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        names: The list of list/series of lists of tokenized records that are to be deduplicated.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pair: (prob_C,prob_B); converged probability distributions C (core) and B (background)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prob_C</span> <span class="o">=</span> <span class="n">prob_B</span> <span class="o">=</span> <span class="n">initial_probs</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">networds</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flatten2one</span><span class="p">(</span><span class="n">names</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prob_C</span><span class="p">)):</span>
+        <span class="n">all_z</span> <span class="o">=</span> <span class="n">names</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">word_estimation</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span><span class="p">))</span>
+        <span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span> <span class="o">=</span> <span class="n">update_weights</span><span class="p">(</span><span class="n">all_z</span><span class="p">,</span><span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span><span class="p">,</span><span class="n">networds</span><span class="p">)</span>
+
+    <span class="c1">#Removes any nan values if it exists</span>
+    <span class="n">prob_C</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">prob_B</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="assrtcore"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.assrtcore">[docs]</a><span class="k">def</span> <span class="nf">assrtcore</span><span class="p">(</span><span class="n">word</span><span class="p">,</span><span class="n">pofcore</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        word (str): A word</span>
+<span class="sd">        pofcore (dict): Core probability distribution</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        float: probabilities of being core (float)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">pofcore</span><span class="p">[</span><span class="n">word</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="assrtbg"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.assrtbg">[docs]</a><span class="k">def</span> <span class="nf">assrtbg</span><span class="p">(</span><span class="n">word</span><span class="p">,</span><span class="n">pofcore</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        word (str): A word</span>
+<span class="sd">        pofcore (dict): Core probability distribution</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: probabilities of being background</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="mf">1e-11</span><span class="o">-</span><span class="n">pofcore</span><span class="p">[</span><span class="n">word</span><span class="p">])</span></div>
+
+
+
+
+<span class="c1">#</span>
+<div class="viewcode-block" id="distmetric"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.distmetric">[docs]</a><span class="k">def</span> <span class="nf">distmetric</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate edit distance, if (1-edit distance) or how many characters do we retain&gt;75% of the length,</span>
+<span class="sd">    then we probably have a misspelling, and we can assert that both are the same.</span>
+
+<span class="sd">    Being the same implies, both are either core or both are background.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s1  (list): sentence from first table</span>
+<span class="sd">        s2  (list): sentence from second table </span>
+<span class="sd">        pr1 (dict): core probability distribution of the words of first table</span>
+<span class="sd">        pr2 (dict): core probability distribution of the words of second table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: the probability of being a match </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">workons1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+    <span class="n">workons2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">reduceds1</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w1</span> <span class="k">for</span> <span class="n">w1</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s1</span><span class="p">)])</span>
+    <span class="n">reduceds2</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w2</span> <span class="k">for</span> <span class="n">w2</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s2</span><span class="p">)])</span>
+    <span class="n">charsimi</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="p">(</span><span class="n">editdistance</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">reduceds1</span><span class="p">,</span><span class="n">reduceds2</span><span class="p">)</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">reduceds1</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">reduceds2</span><span class="p">)))</span>
+    
+    <span class="k">if</span> <span class="n">charsimi</span><span class="o">&gt;=</span><span class="mf">0.8</span><span class="p">:</span>
+        <span class="n">ret</span><span class="o">+=</span><span class="n">charsimi</span>
+
+    <span class="c1">#Misspellings would be part of the set outside the union</span>
+    <span class="k">for</span> <span class="n">w1</span> <span class="ow">in</span> <span class="n">workons1</span><span class="p">:</span>
+        <span class="c1">#filter out those words from sentence 2 that are 75% close to this particular word w1 from sentence 1 </span>
+        <span class="n">dat</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="p">((</span><span class="n">editdistance</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span><span class="n">x</span><span class="p">))</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">w1</span><span class="p">))))</span><span class="o">&gt;</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">workons2</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="c1">#print &quot;Inside distance metric: &quot;, dat</span>
+        <span class="c1">#The misspelled words are the same, thus both are part of core or part of background</span>
+        <span class="n">ret</span><span class="o">+=</span> <span class="n">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">),[</span><span class="n">pr2</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">])</span><span class="o">*</span><span class="n">pr1</span><span class="p">[</span><span class="n">w1</span><span class="p">]</span> <span class="o">+</span> <span class="n">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">y</span><span class="p">)),[</span><span class="n">pr2</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">pr1</span><span class="p">[</span><span class="n">w1</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+
+
+<span class="c1">#</span>
+<div class="viewcode-block" id="edit_func"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.edit_func">[docs]</a><span class="k">def</span> <span class="nf">edit_func</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Added edit functions that can factor into the probability. The two called in here are </span>
+<span class="sd">    misspelling and abbreviation. Abbreviation is currently switched off.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s1  (list): sentence from first table</span>
+<span class="sd">        s2  (list): sentence from second table </span>
+<span class="sd">        pr1 (dict): core probability distribution of the words of first table</span>
+<span class="sd">        pr2 (dict): core probability distribution of the words of second table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: representing probabilities of two sentences to be the same after edits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">fn</span><span class="o">=</span><span class="mf">0.0</span>
+
+    <span class="c1">#abbreviation probability 2 word abbrvs and 3 word abbrvs</span>
+    <span class="c1">#dat =( abbrv_func(s1,s2,pr1,pr2,2)+abbrv_func(s1,s2,pr1,pr2,3) )</span>
+    <span class="c1">#fn+=dat</span>
+    
+    <span class="c1">#Probability from misspelling</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="n">fn</span><span class="o">+</span><span class="n">distmetric</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fn</span></div>
+
+
+
+
+<div class="viewcode-block" id="abbrv_func"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.abbrv_func">[docs]</a><span class="k">def</span> <span class="nf">abbrv_func</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If I abbreviate Cafe Coffee Day to CCD, they both are still the same, this creates abbreviations and checks if same.</span>
+
+<span class="sd">    If they are the same words then each of their probabilities are multiplied (of being core or background)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s1  (list): tokenized sentence from first table</span>
+<span class="sd">        s2  (list): tokenized sentence from second table</span>
+<span class="sd">        pr1 (dict): core probability distribution of the words of first table</span>
+<span class="sd">        pr2 (dict): core probability distribution of the words of second table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: probability of match</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#n corresponds to number of words abbreviations</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span><span class="o">-</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">w1</span><span class="o">=</span><span class="n">s1</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">n</span><span class="p">]</span>
+        <span class="n">abbs</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span>
+        <span class="c1">#If abbreviation exists then those are same, and thus we can say that these words and </span>
+        <span class="c1">#their abbreviations are all part of the core or all part of background</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">abbs</span> <span class="ow">in</span> <span class="n">s2</span><span class="p">):</span>
+            <span class="n">ret</span><span class="o">+=</span> <span class="n">reduce</span><span class="p">(</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">),[</span><span class="n">pr1</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span><span class="o">*</span><span class="n">pr2</span><span class="p">[</span><span class="n">abbs</span><span class="p">]</span> <span class="o">+</span> <span class="n">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">y</span><span class="p">)),[</span><span class="n">pr1</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">pr2</span><span class="p">[</span><span class="n">abbs</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+
+
+
+<div class="viewcode-block" id="dedup"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.dedup">[docs]</a><span class="k">def</span> <span class="nf">dedup</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="n">sent2</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The core deduplication algorithm. It takes in two sentences (sent1 and sent2) and the probability distribution of core words.</span>
+
+<span class="sd">    The algorithm starts by separating words that are in common. Those words in common should be core words in both or background words in both.</span>
+<span class="sd">    Those not common should be background words in their respective tables.</span>
+
+<span class="sd">    We incorporate edit functions (abbreviation and distance metric) and generate probabilities from them.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sent1  (list): tokenized sentence from first table</span>
+<span class="sd">        sent2  (list): tokenized sentence from second table</span>
+<span class="sd">        pofcore1 (dict): core probability distribution of the table where sent1 came from</span>
+<span class="sd">        pofcore2 (dict): core probability distribution of the table where sent2 came from.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: Probability of sent1 being a match with sent2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#To be a same match, all core words should be the same and all other words should be background</span>
+    <span class="n">fprob</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="nb">float</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sent2</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">common_w</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span>
+    <span class="n">s1_uncommon</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span>
+    <span class="n">s2_uncommon</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span>
+    <span class="n">commonprob</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="c1">#If a word is common, it should be part of the core in both sentences or part of background in both sentences</span>
+    <span class="k">for</span> <span class="n">w_</span> <span class="ow">in</span> <span class="n">common_w</span><span class="p">:</span>
+        <span class="n">commonprob</span><span class="o">=</span> <span class="n">commonprob</span><span class="o">*</span> <span class="p">(</span> <span class="n">assrtcore</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span><span class="o">*</span><span class="n">assrtcore</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span> 
+                                    <span class="o">+</span> <span class="n">assrtbg</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span><span class="o">*</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">))</span>
+    
+    <span class="c1">#print &quot;Commons: &quot;, common_w, commonprob</span>
+    <span class="c1">#If a word is in sentence 1 but not in sentence 2, then it should be a background word</span>
+    <span class="n">prob1</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">for</span> <span class="n">w1_</span> <span class="ow">in</span> <span class="n">s1_uncommon</span><span class="p">:</span>
+        <span class="n">prob1</span><span class="o">*=</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w1_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span>
+    
+    <span class="c1">#print &quot;uncommon1: &quot;, s1_uncommon, prob1</span>
+    
+    <span class="c1">#If a word is in sentence 2 but not in sentence 1, then it should be a background</span>
+    <span class="n">prob2</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">for</span> <span class="n">w2_</span> <span class="ow">in</span> <span class="n">s2_uncommon</span><span class="p">:</span>
+        <span class="n">prob2</span><span class="o">*=</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w2_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span>
+    
+    <span class="c1">#print &quot;uncommon2: &quot;, s2_uncommon, prob2</span>
+    
+    <span class="n">fprob</span> <span class="o">=</span> <span class="n">fprob</span> <span class="o">+</span> <span class="n">prob1</span><span class="o">*</span><span class="n">prob2</span><span class="o">*</span><span class="n">commonprob</span>
+    <span class="c1">#print &quot;fprob&quot;, fprob</span>
+    
+    <span class="c1">#Add probabilities gotten from edit functions</span>
+    <span class="n">fprob</span><span class="o">=</span> <span class="n">fprob</span><span class="o">+</span><span class="n">edit_func</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="n">sent2</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">fprob</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="test_sample"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.test_sample">[docs]</a><span class="k">def</span> <span class="nf">test_sample</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span><span class="n">pC</span><span class="p">,</span><span class="n">pB</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A test function to test my dedup algorithm. Not important. Ignore</span>
+<span class="sd">    Args:</span>
+<span class="sd">        alpha (float): The weightage of word being core</span>
+<span class="sd">        pC (dict): The probability distribution of Core words </span>
+<span class="sd">        pB (dict): The probability distribution of background words</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#sample_set = pd.Series([[&quot;best&quot;, &quot;western&quot;, &quot;lamplighter&quot;, &quot;inn&quot;],[&quot;best&quot;,&quot;western&quot;],[&quot;Hotel&quot;,&quot;Amsterdam&quot;]])</span>
+    <span class="c1">#pC,pB = core_algo1(sample_set)</span>
+    
+    <span class="n">pofcore</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">pC</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span>
+        <span class="n">pofcore</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">)</span><span class="o">*</span><span class="n">pB</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="n">p1</span> <span class="o">=</span><span class="p">[</span><span class="s2">&quot;best&quot;</span><span class="p">,</span> <span class="s2">&quot;western&quot;</span><span class="p">,</span><span class="s2">&quot;hotel&quot;</span><span class="p">]</span>
+    <span class="n">p2</span><span class="o">=</span> <span class="p">[</span><span class="s2">&quot;best&quot;</span><span class="p">,</span><span class="s2">&quot;western&quot;</span><span class="p">]</span>
+    <span class="c1">#print pofcore</span>
+    <span class="nb">print</span> <span class="n">dedup</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">,</span><span class="n">pofcore</span><span class="p">,</span><span class="n">pofcore</span><span class="p">)</span></div>
+    
+
+
+
+
+<div class="viewcode-block" id="coreprob"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.coreprob">[docs]</a><span class="k">def</span> <span class="nf">coreprob</span><span class="p">(</span><span class="n">pC</span><span class="p">,</span><span class="n">pB</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function takes the probability distributions generated from the EM algorithm and runs the formula:</span>
+<span class="sd">        </span>
+<span class="sd">        .. math:: </span>
+<span class="sd">            P(w) = \\frac{\\alpha\\cdot C(w)}{\\alpha\\cdot C(w) + (1-\\alpha )\\cdot B(w)}</span>
+
+<span class="sd">    where w is the word.</span>
+
+<span class="sd">    Alpha indicates the weight. If alpha is 0 all words are background, if alpha is 1 all words are core.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        pC (dict): The probability distribution of Core words </span>
+<span class="sd">        pB (dict): The probability distribution of background words</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: the final probability a word is a core or not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pofcore</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">pC</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">pofcore</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">)</span><span class="o">*</span><span class="n">pB</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">pofcore</span></div>
+
+
+
+
+<span class="c1">#</span>
+<div class="viewcode-block" id="loaddistributions"><a class="viewcode-back" href="../Code.html#CoreBGgeneration.loaddistributions">[docs]</a><span class="k">def</span> <span class="nf">loaddistributions</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="n">cityname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load the saved tokenized features from prepare_4_EM file, run EM algorithm and return the probabilities of address and names.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filename (str): Name of file where the tokenized features are stored</span>
+<span class="sd">        cityname (str): Name of the city subset where deduplication is to occur </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pair: (pcore_name,pcore_addr) i.e the core probability distribution of the hotel names and hotel addresses for all the properties in that record </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">emfeatures</span> <span class="o">=</span> <span class="n">pk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="o">+</span><span class="s2">&quot;.pk&quot;</span><span class="p">,</span><span class="s2">&quot;rb&quot;</span><span class="p">))</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.8</span>
+    <span class="c1">#Working with only london properties as of now</span>
+    <span class="n">lon_names</span> <span class="o">=</span> <span class="n">emfeatures</span><span class="p">[</span><span class="n">emfeatures</span><span class="o">.</span><span class="n">city</span> <span class="o">==</span> <span class="n">cityname</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">lon_addr</span> <span class="o">=</span> <span class="n">emfeatures</span><span class="p">[</span><span class="n">emfeatures</span><span class="o">.</span><span class="n">city</span> <span class="o">==</span> <span class="n">cityname</span><span class="p">]</span><span class="o">.</span><span class="n">address</span>
+
+    <span class="c1">#Bring out the Core and Background distributions from the EM algorithm of name</span>
+    <span class="n">pC_distr_name</span><span class="p">,</span><span class="n">pB_distr_name</span> <span class="o">=</span> <span class="n">core_algo1</span><span class="p">(</span><span class="n">lon_names</span><span class="p">)</span>
+    <span class="n">pC_distr_addr</span><span class="p">,</span> <span class="n">pB_distr_addr</span> <span class="o">=</span> <span class="n">core_algo1</span><span class="p">(</span><span class="n">lon_addr</span><span class="p">)</span>
+    <span class="c1">#print &quot;rd prob P(C), P(B) &quot;, pC_distr_addr[&quot;rd&quot;], pB_distr_addr[&quot;rd&quot;]</span>
+    <span class="c1">#Generate probability of being a core</span>
+    <span class="n">pcore_name</span> <span class="o">=</span> <span class="n">coreprob</span><span class="p">(</span><span class="n">pC_distr_name</span><span class="p">,</span><span class="n">pB_distr_name</span><span class="p">,</span><span class="n">alpha</span><span class="p">)</span>
+    <span class="n">pcore_addr</span> <span class="o">=</span> <span class="n">coreprob</span><span class="p">(</span><span class="n">pC_distr_addr</span><span class="p">,</span><span class="n">pB_distr_addr</span><span class="p">,</span><span class="n">alpha</span><span class="p">)</span>
+    
+    <span class="c1">#pk.dump((pcore_name,pcore_addr),open(filename+&quot;distributions.pk&quot;,&quot;wb&quot;))</span>
+    <span class="c1">#print &quot;File: &quot;, filename+&quot;distributions.pk created&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">pcore_name</span><span class="p">,</span><span class="n">pcore_addr</span><span class="p">)</span></div>
+
+
+
+
+
+
+
+<span class="c1">#EXTRA:</span>
+
+<span class="c1"># def preclean(dat):</span>
+<span class="c1">#     cln_d = set(flatten2one(dat))</span>
+    
+<span class="c1">#     def snip(x,cln):</span>
+<span class="c1">#         if len(x)&lt;1:</span>
+<span class="c1">#             return</span>
+<span class="c1">#         for idx,w in enumerate(x):</span>
+<span class="c1">#             if len(w)&lt;=2 or w.isdigit():</span>
+<span class="c1">#                 continue</span>
+<span class="c1">#             if w[:-1] in cln:</span>
+<span class="c1">#                 x[idx]=w[:-1]</span>
+
+<span class="c1">#     dat.apply(snip,args=(cln_d,))</span>
+<span class="c1">#     return dat</span>
+
+<span class="c1">#Extra function not used, part of old experiments</span>
+<span class="c1"># def corecmp(w1,w2, pofcore):</span>
+<span class="c1">#     if(len(w1)==0 or len(w2)==0):</span>
+<span class="c1">#         return 0</span>
+<span class="c1">#     if w1[0]==w2[0]:</span>
+<span class="c1">#         return assrtcore(w1[0], pofcore)*assrtcore(w2[0],pofcore)</span>
+<span class="c1">#     else:</span>
+<span class="c1">#         return 0</span>
+
+<span class="c1"># def abbrv(w1,w2, pofcore1,pofcore2):</span>
+<span class="c1">#     if(len(w1)==0 or len(w2)==0):</span>
+<span class="c1">#         return 0</span>
+<span class="c1">#     abbs = &#39;&#39;.join([w[:1] for w in w1])</span>
+<span class="c1">#     print &quot;inside abbrv: &quot;, abbs</span>
+<span class="c1">#     if abbs==w2[0]:</span>
+<span class="c1">#         return assrtcore(w1,pofcore1)*assrtcore(w2,pofcore2) + assrtbg(w1,pofcore1)*assrtbg(w2,pofcore2)</span>
+<span class="c1">#     else:</span>
+<span class="c1">#         return 0</span>
+
+<span class="c1"># def dedup(p1,p2,i,j,pofcore):</span>
+<span class="c1">#     if(i==len(p1) and j==len(p2)):</span>
+<span class="c1">#         return 1</span>
+<span class="c1">#     ret = 0</span>
+
+<span class="c1">#     #PI = {corecmp: assrtcore, abbrv: assrtcore, bginsert: assrtbg, bgdelete: assrtbg}</span>
+<span class="c1">#     E = {corecmp: (1,1), abbrv: (2,1), bginsert: (1,1), bgdelete: (1,2)}</span>
+<span class="c1">#     for e in E.keys():</span>
+<span class="c1">#         l,r = E[e] </span>
+<span class="c1">#         W1 = p1[i:i+l]</span>
+<span class="c1">#         W2 = p2[j:j+r]</span>
+<span class="c1">#         pi = e(W1,W2,pofcore)</span>
+<span class="c1">#         if pi==0:</span>
+<span class="c1">#             continue</span>
+<span class="c1">#         ret+=pi*dedup(p1,p2,i+l,j+r)</span>
+    
+<span class="c1">#     return ret</span>
+
+
+
+<span class="c1">#lon_names = preclean(lon_names)</span>
+<span class="c1">#lon_addr = preclean(lon_addr)</span>
+<span class="c1">#set(flatten2one(lon_names))</span>
+
+<span class="c1"># #s1 = [&quot;cafe&quot;,&quot;coffee&quot;,&quot;day&quot;]</span>
+<span class="c1"># #s2= [&quot;cafe&quot;,&quot;coffee&quot;,&quot;day&quot;]</span>
+<span class="c1"># #s2 = [&quot;cafe&quot;,&quot;coffee&quot;,&quot;day&quot;]</span>
+<span class="c1"># s1=[&quot;best&quot;,&quot;western&quot;,&quot;hotel&quot;]</span>
+<span class="c1"># s2=[&quot;bw&quot;,&quot;hotel&quot;]</span>
+<span class="c1"># tempp = {&quot;cafe&quot;: 0.5,&quot;coffee&quot;: 0.45,&quot;day&quot;: 1.0, &quot;ccd&quot;: 1.0, &quot;best&quot;:0.3,&quot;western&quot;: 0.5,&quot;bw&quot;:0.70,&quot;hotel&quot;:0.24,&quot;coffefe&quot;:0.45,&quot;gay&quot;:0.8}</span>
+<span class="c1"># print dedup(s1,s2,tempp,tempp)</span>
+
+<span class="c1">#exmpl = pd.Series([[&quot;starbucks&quot;,&quot;coffee&quot;],[&quot;kalmane&quot;,&quot;coffee&quot;],[&quot;starbucks&quot;]])</span>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Shubhang Goswami.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
