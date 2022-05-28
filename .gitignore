@@ -283,37 +283,18 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 04d0e0a (making changes to initial commit)
 .bson
 .json
 .tar
 /mongo-c-driver-1.21.1
 /csv_files
-/dedup_analysis/images
-<<<<<<< HEAD
-/dedup_analysis/*.bson
-/dedup_analysis/*.json
-/dedup_analysis/*.csv
-/dedup_analysis/*.tar
-/dedup_analysis/*.tar.gz
-/dedup_analysis/*.scsv
-/dedup_analysis/pickles
-/dedup_analysis/csv_files
 *.pk
 *.bson
 *.json
 .csv
 .scsv
-dedup_analysis/images
-/mongo-c-driver-1.21.1
-=======
-*.tar.gz
-*.tar.*
 *.pk
->>>>>>> 04d0e0a (making changes to initial commit)
+*.tar.gz
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
