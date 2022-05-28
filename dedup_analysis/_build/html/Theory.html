@@ -1,0 +1,717 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>The theory behind the model of Match-Maker &#8212; Deduplication/Entity Resolution of supplier database  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Match-Maker documentation Code" href="Code.html" />
+    <link rel="prev" title="Welcome to Match-Maker documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-theory-behind-the-model-of-match-maker">
+<h1>The theory behind the model of Match-Maker<a class="headerlink" href="#the-theory-behind-the-model-of-match-maker" title="Permalink to this headline">¶</a></h1>
+<p><strong>Match-Maker</strong> is an entity-resolution/deduplication algorithm. Given two tables of hotel data including name,address,city, lat,longs this algorithm matches table 1 records to table 2 records. This algorithm has incorporated a probability based method provided by this paper <a class="reference external" href="http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf">http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf</a></p>
+<p>The programme consists of the following steps:</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>Cleaning and preparation of the data</dt>
+<dd><ul class="first last">
+<li>Removing punctuation and stopwords</li>
+<li>Stemming words</li>
+<li>Decoding unicode and lowercasing</li>
+<li>Tokenization</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Generating Probabilities</dt>
+<dd><ul class="first last">
+<li>EM Algorithm</li>
+<li>p(w)– Probability that the word (w) is a core</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Comparison methods</dt>
+<dd><ul class="first last">
+<li>Probability based</li>
+<li>Edit distance based</li>
+<li>Abbreviation based</li>
+<li>Cossine similarity based</li>
+<li>Lat-Long based</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>If you have questions/comments feel free to reach me at: <a class="reference external" href="mailto:sgoswam3&#37;&#52;&#48;illinois&#46;edu">sgoswam3<span>&#64;</span>illinois<span>&#46;</span>edu</a></p>
+<div class="section" id="cleaning-and-preparation-of-the-data">
+<h2>Cleaning and preparation of the data<a class="headerlink" href="#cleaning-and-preparation-of-the-data" title="Permalink to this headline">¶</a></h2>
+<p>The data present in MongoDB has to be cleaned and formatted effectively before we can do anything with it. The following are the methods employed in this programme for setting up the dataset.
+The file responsible for this is <code class="docutils literal notranslate"><span class="pre">prepare_4_EM.py</span></code></p>
+<div class="section" id="removing-punctuation-and-stopwords">
+<h3>Removing punctuation and stopwords<a class="headerlink" href="#removing-punctuation-and-stopwords" title="Permalink to this headline">¶</a></h3>
+<p>Stopwords are words that we believe are not useful for our match making. These words include, “that,is,of, etc.” filler words provided by the <a class="reference external" href="https://www.nltk.org/api/nltk.html">nltk package</a>. We use stop words from French, German and English. Along with stopwords punctuations are removed.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">gramclean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">stop_words</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Removes punctuation, stop words and cleans the sentence and gives back the whole sentence</span>
+<span class="sd">    Used in a apply function.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        x: A sentence from pandas series. (Hotel name or hotel address)</span>
+<span class="sd">        stop_words: Set containing not useful words (is, that, the etc.)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: A string that is the cleaned sentence</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">word</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^\w\s]&quot;</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="stemming-words">
+<h3>Stemming words<a class="headerlink" href="#stemming-words" title="Permalink to this headline">¶</a></h3>
+<p>There are many words written in different ways. Such as <em>road</em> has other forms such as <em>rd</em>, <em>roads</em>, <em>rds</em> and we need to tell the computer that these words are the same. Using <a class="reference external" href="http://pe.usps.com/text/pub28/28apc_002.htm">United States Postal Service’s (USPS) street suffix abbreviations</a> and <a class="reference external" href="http://pe.usps.com/text/pub28/28apc_003.htm">secondary unit designations</a> we were able to find the necessary abbreviations or stemmed formats for plenty of words. This helped reduce the lexicon of our programme and make matching better.</p>
+<p>A dictionary was created using</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>
+<span class="c1"># coding: utf-8</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">urllib2</span>
+<span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
+<span class="kn">from</span> <span class="nn">cookielib</span> <span class="kn">import</span> <span class="n">CookieJar</span>
+
+<span class="c1">#Visit link 1 to see the structure of the table involved. This algo assigns the abbreviations to a dictionary</span>
+<span class="k">def</span> <span class="nf">Get_abbrvsC1</span><span class="p">(</span><span class="n">tabl</span><span class="p">):</span>
+    <span class="n">Abbrv</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">tabl</span><span class="o">.</span><span class="n">findAll</span><span class="p">(</span><span class="s2">&quot;tr&quot;</span><span class="p">):</span>
+        <span class="n">cells</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">findAll</span><span class="p">(</span><span class="s2">&quot;td&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">state</span> <span class="ow">in</span> <span class="n">Abbrv</span><span class="p">):</span>
+            <span class="n">Abbrv</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">:</span>
+            <span class="c1">#print &quot;\t&quot;, cells[0].find(text=True)</span>
+            <span class="n">Abbrv</span><span class="p">[</span><span class="n">state</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">3</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">state</span> <span class="o">=</span> <span class="n">cells</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">state</span> <span class="ow">in</span> <span class="n">Abbrv</span><span class="p">):</span>
+                <span class="n">Abbrv</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">Abbrv</span><span class="p">[</span><span class="n">state</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+            <span class="c1">#print cells[0].find(text=True),&quot;\t&quot;, cells[1].find(text=True),&quot;\t&quot;,cells[2].find(text=True)</span>
+    <span class="k">del</span> <span class="n">Abbrv</span><span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">Abbrv</span><span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">Abbrv</span><span class="p">)</span>
+
+
+
+<span class="c1">#Link 2 is simpler, column length is same in each column for table. Assigns abbreviations from link 2</span>
+<span class="k">def</span> <span class="nf">Get_abbrvsC2</span><span class="p">(</span><span class="n">tabl</span><span class="p">):</span>
+    <span class="n">Abbrv</span><span class="o">=</span><span class="p">{}</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">tabl</span><span class="o">.</span><span class="n">findAll</span><span class="p">(</span><span class="s2">&quot;tr&quot;</span><span class="p">):</span>
+        <span class="n">cells</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">findAll</span><span class="p">(</span><span class="s2">&quot;td&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="n">Abbrv</span><span class="p">[</span><span class="n">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span><span class="o">=</span><span class="p">[</span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+    <span class="k">del</span> <span class="n">Abbrv</span><span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">Abbrv</span><span class="p">[</span><span class="s1">&#39;approved abbreviation&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">Abbrv</span><span class="p">)</span>       
+
+
+<span class="c1">#Returns the word if not in the dictionary, else assigns the abbreviated/key part of it (so avenue -&gt; ave)</span>
+<span class="k">def</span> <span class="nf">findidx</span><span class="p">(</span><span class="n">StemWords</span><span class="p">,</span><span class="n">word</span><span class="p">):</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="n">StemWords</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">key</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">word</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c1">#These links contain common USPS abbreviations from which I build my stemming dictionary</span>
+    <span class="n">link1</span> <span class="o">=</span> <span class="s2">&quot;http://pe.usps.com/text/pub28/28apc_002.htm&quot;</span>
+    <span class="n">link2</span> <span class="o">=</span> <span class="s2">&quot;http://pe.usps.com/text/pub28/28apc_003.htm&quot;</span>
+    <span class="c1">#To prevent an error, we needed to enable cookies and send request</span>
+    <span class="n">cj</span> <span class="o">=</span> <span class="n">CookieJar</span><span class="p">()</span>
+    <span class="n">agent_</span> <span class="o">=</span> <span class="s1">&#39;Mozilla/5.0 (Windows NT 6.1; rv:54.0) Gecko/20100101 Firefox/54.0&#39;</span>
+
+    <span class="c1">#Open the links</span>
+    <span class="n">opener</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">build_opener</span><span class="p">(</span><span class="n">urllib2</span><span class="o">.</span><span class="n">HTTPCookieProcessor</span><span class="p">(</span><span class="n">cj</span><span class="p">))</span>
+    <span class="n">opener</span><span class="o">.</span><span class="n">addheaders</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;user-agent&#39;</span><span class="p">,</span><span class="n">agent_</span><span class="p">)]</span>
+    <span class="n">pageC1response</span> <span class="o">=</span> <span class="n">opener</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">link1</span><span class="p">)</span>
+    <span class="n">pageC2response</span> <span class="o">=</span> <span class="n">opener</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">link2</span><span class="p">)</span>
+
+    <span class="n">soupC1</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">pageC1response</span><span class="p">)</span>
+    <span class="n">soupC2</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">pageC2response</span><span class="p">)</span>
+
+    <span class="n">tablC1</span> <span class="o">=</span> <span class="n">soupC1</span><span class="o">.</span><span class="n">table</span>
+    <span class="n">tablC2</span> <span class="o">=</span> <span class="n">soupC2</span><span class="o">.</span><span class="n">table</span>
+
+    <span class="n">abbrvSC2</span> <span class="o">=</span> <span class="n">Get_abbrvsC2</span><span class="p">(</span><span class="n">tablC2</span><span class="p">)</span>
+    <span class="n">abbrvSC1</span> <span class="o">=</span> <span class="n">Get_abbrvsC1</span><span class="p">(</span><span class="n">tablC1</span><span class="p">)</span>
+
+
+    <span class="k">for</span> <span class="n">key_</span> <span class="ow">in</span> <span class="n">abbrvSC1</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key_</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;s&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key_</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">abbrvSC1</span><span class="p">:</span>
+                <span class="n">abbrvSC1</span><span class="p">[</span><span class="n">key_</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">abbrvSC1</span><span class="p">[</span><span class="n">key_</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span> <span class="o">+</span> <span class="n">abbrvSC1</span><span class="p">[</span><span class="n">key_</span><span class="p">]</span>
+                <span class="k">del</span> <span class="n">abbrvSC1</span><span class="p">[</span><span class="n">key_</span><span class="p">]</span>
+
+
+    <span class="n">StemWords</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">abbrvSC1</span><span class="p">,</span><span class="n">abbrvSC2</span><span class="p">])</span>
+
+    <span class="c1">#Added some extra words to the dictionary, such that if it finds any of these words we can represent it as such</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;frt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;fort&quot;</span><span class="p">,</span><span class="s2">&quot;frt&quot;</span><span class="p">,</span><span class="s2">&quot;forts&quot;</span><span class="p">,</span><span class="s2">&quot;frts&quot;</span><span class="p">,</span><span class="s2">&quot;ft&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;north&quot;</span><span class="p">,</span><span class="s2">&quot;nrth&quot;</span><span class="p">,</span><span class="s2">&quot;n&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;s&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;south&quot;</span><span class="p">,</span><span class="s2">&quot;s&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;e&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;east&quot;</span><span class="p">,</span><span class="s2">&quot;e&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;west&quot;</span><span class="p">,</span><span class="s2">&quot;w&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;hwy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;highway&quot;</span><span class="p">,</span><span class="s2">&quot;hgwy&quot;</span><span class="p">,</span><span class="s2">&quot;hway&quot;</span><span class="p">,</span><span class="s2">&quot;hw&quot;</span><span class="p">,</span><span class="s2">&quot;hwy&quot;</span><span class="p">,</span><span class="s2">&quot;highways&quot;</span><span class="p">,</span><span class="s2">&quot;hgwys&quot;</span><span class="p">,</span><span class="s2">&quot;hways&quot;</span><span class="p">,</span><span class="s2">&quot;hws&quot;</span><span class="p">,</span><span class="s2">&quot;hwys&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;hotel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hotel&quot;</span><span class="p">,</span><span class="s2">&quot;hotels&quot;</span><span class="p">,</span><span class="s2">&quot;hotl&quot;</span><span class="p">]</span>
+    <span class="n">StemWords</span><span class="p">[</span><span class="s2">&quot;hostel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;hostel&quot;</span><span class="p">,</span><span class="s2">&quot;hostels&quot;</span><span class="p">,</span><span class="s2">&quot;hostls&quot;</span><span class="p">,</span><span class="s2">&quot;hostl&quot;</span><span class="p">]</span>
+
+    <span class="c1">#Store the dictionary to be used later</span>
+    <span class="n">StemWords</span> <span class="o">=</span> <span class="n">StemWords</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+    <span class="n">StemWords</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;stemming_dict.csv&quot;</span><span class="p">)</span>
+
+
+
+</pre></div>
+</div>
+</div>
+<div class="section" id="decoding-unicode-and-lowercasing">
+<h3>Decoding Unicode and lowercasing<a class="headerlink" href="#decoding-unicode-and-lowercasing" title="Permalink to this headline">¶</a></h3>
+<p>A lot of hotel names are addresses in foreign countries have characters that are unicode. Using unidecoder, we decode them into ASCII. Also everything is converted to lowercase to remove case sensitivity of any table.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">translittunicode</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Translitterate unicode to ASCII. Used as apply function</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: A unicode string</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: A decoded ASCII string</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">encoding</span> <span class="o">=</span> <span class="n">CharsetDetector</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">detect</span><span class="p">()</span><span class="o">.</span><span class="n">getName</span><span class="p">()</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">unidecode</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tokenization">
+<h3>Tokenization<a class="headerlink" href="#tokenization" title="Permalink to this headline">¶</a></h3>
+<p>After all the cleaning, each word was seperated from sentences of hotel names/address. Each word becomes a token for comparison. This makes the original dataframe of names and addresses into a data frame where these columns are lists of lists of cleaned data.
+The implementation of tokenizing and stemming is given by</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">stemmer</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">stemdic</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Strip sentence into individual words, removing spaces and punctuation. </span>
+<span class="sd">    Then replaces words with their stemmed counterparts given by the StemWords (a dictionary of words and their stem)</span>
+<span class="sd">    </span>
+<span class="sd">    Runs function findidx on series row data. This is used as an apply function on Series.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x:  The sentence provided by a pandas series (usually hotel name or address)</span>
+<span class="sd">        stemdic: Dictionary containing a list of words as values and their stemmed counterparts as keys</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list: list of tokenized words. (So a sentence becomes a list of stripped and stemmed words)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">tokens</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[^\w\s]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span><span class="n">word</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tokens</span><span class="p">):</span>
+        <span class="n">tokens</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">findidx</span><span class="p">(</span><span class="n">stemdic</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">stemdic</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">word</span><span class="p">[</span><span class="mi">0</span><span class="p">])],</span><span class="n">word</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tokens</span>    
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="generating-probabilities">
+<h2>Generating Probabilities<a class="headerlink" href="#generating-probabilities" title="Permalink to this headline">¶</a></h2>
+<p>The core idea of the match making method is that each hotel name or address, would have core words (like <em>Best</em> and <em>Western</em> in <cite>Best Western Hotel Sangria Hill</cite> or <em>Radison</em> in <cite>Hotel Radison Delhi</cite>) and background words (like <em>Hotel</em> or <em>inn</em> that is common in many hotel names). If two names are to match, their core words have to match and those that don’t match should be background words.</p>
+<p>We assume that core words and background words follow a certain probability distribution and these words we see in our table are samples from them. Thus, we say that,
+The distribution of all core words is <strong>P(C)</strong>.
+The distribution of all background words is <strong>P(B)</strong>.</p>
+<p>Our goal is to find these distributions from the data given to us i.e. for each table.</p>
+<div class="section" id="em-algorithm">
+<h3>EM Algorithm<a class="headerlink" href="#em-algorithm" title="Permalink to this headline">¶</a></h3>
+<p>EM stands for Estimation Maximization. This algorithm is useful for unsupervised clustering of data. EM will help us find the two distributions.</p>
+<p>Naively, this algorithm works like this:</p>
+<p>We start with a uniform distribution for both P(C) and P(B). From the guess of uniform we label the data belonging to cluster P(C) or P(B). We update the parameters of P(C) and P(B) until convergence, i.e. until the distribution of the data is accurately captured by P(C) and P(B) (they have been sufficiently clustered).</p>
+<p>More info can be found online.</p>
+<p>Once we get these distributions we move on to generating whether a word is core or not.</p>
+<p>The implementation of the EM algorithm is done in CoreBGgeneration.py</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">update_weights</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">networds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    After getting new z(w), update the parameters/distributions C and B to better represent the data.</span>
+<span class="sd">    This is the update step in the EM algorithm. For details: http://wwwconference.org/proceedings/www2014/proceedings/p409.pdf </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        Z (list): the distribution containing all z.</span>
+<span class="sd">        C (dict): the probability distribution of core words</span>
+<span class="sd">        B (dict): the probability distribution of background words</span>
+<span class="sd">        networds (int): Total number of words (in the whole table)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pair: (c,b) containing the updated probabilitiy distribution (core, background)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">c</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+    <span class="n">b</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">C</span><span class="p">:</span>
+        <span class="c1">#print word</span>
+        <span class="n">new_c</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">new_b</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">Z</span><span class="p">:</span>
+            <span class="c1">#print z,</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">z</span><span class="p">:</span>
+                <span class="c1">#print z[word]</span>
+                <span class="n">new_c</span><span class="o">+=</span><span class="n">z</span><span class="p">[</span><span class="n">word</span><span class="p">]</span>
+                <span class="n">new_b</span><span class="o">+=</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">z</span><span class="p">[</span><span class="n">word</span><span class="p">])</span>
+    
+        <span class="n">new_c</span><span class="o">=</span><span class="n">new_c</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span>
+        <span class="n">new_b</span><span class="o">=</span><span class="n">new_b</span><span class="o">/</span><span class="p">(</span><span class="n">networds</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-07</span><span class="p">)</span>
+        <span class="c1">#print &quot;new C({}): &quot;.format(word), new_c</span>
+        <span class="n">c</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_c</span>
+        <span class="n">b</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_b</span>
+        <span class="c1">#print &quot;next&quot;</span>
+    
+    <span class="c1">#print c</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">c</span><span class="p">,</span><span class="n">b</span><span class="p">)</span>
+    
+
+
+
+
+<span class="c1">#</span>
+<span class="k">def</span> <span class="nf">core_algo1</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run the EM algorithm that updates the distribution until some degree of convergence</span>
+<span class="sd">    The convergence criteria chosen is the number of field entries.</span>
+<span class="sd">    Starts with term frequency distribution and then updates until convergence</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        names: The list of list/series of lists of tokenized records that are to be deduplicated.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pair: (prob_C,prob_B); converged probability distributions C (core) and B (background)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prob_C</span> <span class="o">=</span> <span class="n">prob_B</span> <span class="o">=</span> <span class="n">initial_probs</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">networds</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flatten2one</span><span class="p">(</span><span class="n">names</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prob_C</span><span class="p">)):</span>
+        <span class="n">all_z</span> <span class="o">=</span> <span class="n">names</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">word_estimation</span><span class="p">,</span><span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span><span class="p">))</span>
+        <span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span> <span class="o">=</span> <span class="n">update_weights</span><span class="p">(</span><span class="n">all_z</span><span class="p">,</span><span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span><span class="p">,</span><span class="n">networds</span><span class="p">)</span>
+
+    <span class="c1">#Removes any nan values if it exists</span>
+    <span class="n">prob_C</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+    <span class="n">prob_B</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">prob_C</span><span class="p">,</span><span class="n">prob_B</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="p-w-probability-that-the-word-w-is-a-core">
+<h3>p(w)– Probability that the word (w) is a core<a class="headerlink" href="#p-w-probability-that-the-word-w-is-a-core" title="Permalink to this headline">¶</a></h3>
+<p>After getting the distributions P(C) and P(B) (hereon referred to as C and B respectively), for each word we formulate a probability that whether that word is a core word or not, as equation</p>
+<div class="math notranslate nohighlight" id="equation-coreprob">
+<span class="eqno">(1)<a class="headerlink" href="#equation-coreprob" title="Permalink to this equation">¶</a></span>\[p(w) = \frac{\alpha \times C(w)}{\alpha\times C(w) + (1-\alpha)\times B(w)}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">math:</th><td class="field-body"><cite>alpha</cite> gives a weightage to how much favour should we give core words over background words. If :math: <cite>alpha=1</cite>, then we make the assertion that all words are core. Similarly, if  :math: <cite>alpha=0</cite>, then we make the assertion that all words are part of background.</td>
+</tr>
+</tbody>
+</table>
+<p>This p(w) will be crucial while making judgements whether two properties are same or not</p>
+<p>The implementation for this is at <code class="docutils literal notranslate"><span class="pre">CoreBGgeneration.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">coreprob</span><span class="p">(</span><span class="n">pC</span><span class="p">,</span><span class="n">pB</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function takes the probability distributions generated from the EM algorithm and runs the formula:</span>
+<span class="sd">        </span>
+<span class="sd">        .. math:: </span>
+<span class="sd">            P(w) = \\frac{\\alpha\\cdot C(w)}{\\alpha\\cdot C(w) + (1-\\alpha )\\cdot B(w)}</span>
+
+<span class="sd">    where w is the word.</span>
+
+<span class="sd">    Alpha indicates the weight. If alpha is 0 all words are background, if alpha is 1 all words are core.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        pC (dict): The probability distribution of Core words </span>
+<span class="sd">        pB (dict): The probability distribution of background words</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: the final probability a word is a core or not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pofcore</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">pC</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">pofcore</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">alpha</span><span class="o">*</span><span class="n">pC</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">)</span><span class="o">*</span><span class="n">pB</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="comparison-methods">
+<h2>Comparison methods<a class="headerlink" href="#comparison-methods" title="Permalink to this headline">¶</a></h2>
+<p>We use more than one comparison model. Each adding on to the other, in hopes to increase accuracy.</p>
+<div class="section" id="probability-based">
+<h3>Probability based<a class="headerlink" href="#probability-based" title="Permalink to this headline">¶</a></h3>
+<p>For a match to happen, two things should occur.</p>
+<ol class="arabic simple">
+<li>The words that are in common should either both be core words or both be background words. The way that is written in terms of probability is</li>
+</ol>
+<div class="math notranslate nohighlight" id="equation-assert-same-words">
+<span class="eqno">(2)<a class="headerlink" href="#equation-assert-same-words" title="Permalink to this equation">¶</a></span>\[p_1(w)*p_2(w) + (1-p_1(w))(1-p_2(w))\]</div>
+<p>Here p1 and p2 are p(w) from the two different tables we are comparing.</p>
+<ol class="arabic simple" start="2">
+<li>The words that are not in common should be asserted to be part of background. So each of these words will get probability written in the form</li>
+</ol>
+<div class="math notranslate nohighlight" id="equation-assert-diff-words">
+<span class="eqno">(3)<a class="headerlink" href="#equation-assert-diff-words" title="Permalink to this equation">¶</a></span>\[1-p(w)\]</div>
+<p>Here, the p(w) would belong to the table from which the words that were uncommon belong to. So if in between hotel Chandrika from table 1 and Chandrika from table 2, p(w) would be p_1(w) and vice versa for the other case</p>
+<p>The implementation is in <code class="docutils literal notranslate"><span class="pre">CoreBGgeneration.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dedup</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="n">sent2</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The core deduplication algorithm. It takes in two sentences (sent1 and sent2) and the probability distribution of core words.</span>
+
+<span class="sd">    The algorithm starts by separating words that are in common. Those words in common should be core words in both or background words in both.</span>
+<span class="sd">    Those not common should be background words in their respective tables.</span>
+
+<span class="sd">    We incorporate edit functions (abbreviation and distance metric) and generate probabilities from them.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sent1  (list): tokenized sentence from first table</span>
+<span class="sd">        sent2  (list): tokenized sentence from second table</span>
+<span class="sd">        pofcore1 (dict): core probability distribution of the table where sent1 came from</span>
+<span class="sd">        pofcore2 (dict): core probability distribution of the table where sent2 came from.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: Probability of sent1 being a match with sent2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#To be a same match, all core words should be the same and all other words should be background</span>
+    <span class="n">fprob</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="nb">float</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sent2</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+        
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">common_w</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span>
+    <span class="n">s1_uncommon</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span>
+    <span class="n">s2_uncommon</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent2</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">sent1</span><span class="p">)</span>
+    <span class="n">commonprob</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="c1">#If a word is common, it should be part of the core in both sentences or part of background in both sentences</span>
+    <span class="k">for</span> <span class="n">w_</span> <span class="ow">in</span> <span class="n">common_w</span><span class="p">:</span>
+        <span class="n">commonprob</span><span class="o">=</span> <span class="n">commonprob</span><span class="o">*</span> <span class="p">(</span> <span class="n">assrtcore</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span><span class="o">*</span><span class="n">assrtcore</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span> 
+                                    <span class="o">+</span> <span class="n">assrtbg</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span><span class="o">*</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">))</span>
+    
+    <span class="c1">#print &quot;Commons: &quot;, common_w, commonprob</span>
+    <span class="c1">#If a word is in sentence 1 but not in sentence 2, then it should be a background word</span>
+    <span class="n">prob1</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">for</span> <span class="n">w1_</span> <span class="ow">in</span> <span class="n">s1_uncommon</span><span class="p">:</span>
+        <span class="n">prob1</span><span class="o">*=</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w1_</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">)</span>
+    
+    <span class="c1">#print &quot;uncommon1: &quot;, s1_uncommon, prob1</span>
+    
+    <span class="c1">#If a word is in sentence 2 but not in sentence 1, then it should be a background</span>
+    <span class="n">prob2</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">for</span> <span class="n">w2_</span> <span class="ow">in</span> <span class="n">s2_uncommon</span><span class="p">:</span>
+        <span class="n">prob2</span><span class="o">*=</span><span class="n">assrtbg</span><span class="p">(</span><span class="n">w2_</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span>
+    
+    <span class="c1">#print &quot;uncommon2: &quot;, s2_uncommon, prob2</span>
+    
+    <span class="n">fprob</span> <span class="o">=</span> <span class="n">fprob</span> <span class="o">+</span> <span class="n">prob1</span><span class="o">*</span><span class="n">prob2</span><span class="o">*</span><span class="n">commonprob</span>
+    <span class="c1">#print &quot;fprob&quot;, fprob</span>
+    
+    <span class="c1">#Add probabilities gotten from edit functions</span>
+    <span class="n">fprob</span><span class="o">=</span> <span class="n">fprob</span><span class="o">+</span><span class="n">edit_func</span><span class="p">(</span><span class="n">sent1</span><span class="p">,</span><span class="n">sent2</span><span class="p">,</span><span class="n">pofcore1</span><span class="p">,</span><span class="n">pofcore2</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">fprob</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="edit-distance-based">
+<h3>Edit distance based<a class="headerlink" href="#edit-distance-based" title="Permalink to this headline">¶</a></h3>
+<p>Two entities could refer to the same thing if they have slight spelling errors in their name. (hotel tennessey and hotel tenesse). So the edit distance allows us to put a metric on how many characters do we need to change to get the other sentence.</p>
+<p>If it is not too many (&lt;20-25% of the characters) then we could assume that a spelling mistake occurred and assert that those two words are same. And what follows is the same probabilistic model added treating them as words in common.</p>
+<p>Along with word by word comparison, we have included a whole concatenated string edit distance comparison. So names such as northwest and north west, would be considered the same. The % of characters kept is added to the probability.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">a direct sum of % of characters kept is added. There might be a better way; such as incorporating each word as common and using the probabilistic method mentioned above. We just stuck to this for now.</p>
+</div>
+<p>This implementation is in <code class="docutils literal notranslate"><span class="pre">CoreBGgeneration.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">distmetric</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate edit distance, if (1-edit distance) or how many characters do we retain&gt;75% of the length,</span>
+<span class="sd">    then we probably have a misspelling, and we can assert that both are the same.</span>
+
+<span class="sd">    Being the same implies, both are either core or both are background.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s1  (list): sentence from first table</span>
+<span class="sd">        s2  (list): sentence from second table </span>
+<span class="sd">        pr1 (dict): core probability distribution of the words of first table</span>
+<span class="sd">        pr2 (dict): core probability distribution of the words of second table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: the probability of being a match </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">workons1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span>
+    <span class="n">workons2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">reduceds1</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w1</span> <span class="k">for</span> <span class="n">w1</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s1</span><span class="p">)])</span>
+    <span class="n">reduceds2</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w2</span> <span class="k">for</span> <span class="n">w2</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">s2</span><span class="p">)])</span>
+    <span class="n">charsimi</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="p">(</span><span class="n">editdistance</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">reduceds1</span><span class="p">,</span><span class="n">reduceds2</span><span class="p">)</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">reduceds1</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">reduceds2</span><span class="p">)))</span>
+    
+    <span class="k">if</span> <span class="n">charsimi</span><span class="o">&gt;=</span><span class="mf">0.8</span><span class="p">:</span>
+        <span class="n">ret</span><span class="o">+=</span><span class="n">charsimi</span>
+
+    <span class="c1">#Misspellings would be part of the set outside the union</span>
+    <span class="k">for</span> <span class="n">w1</span> <span class="ow">in</span> <span class="n">workons1</span><span class="p">:</span>
+        <span class="c1">#filter out those words from sentence 2 that are 75% close to this particular word w1 from sentence 1 </span>
+        <span class="n">dat</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="p">((</span><span class="n">editdistance</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">w1</span><span class="p">,</span><span class="n">x</span><span class="p">))</span><span class="o">/</span><span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="nb">len</span><span class="p">(</span><span class="n">w1</span><span class="p">))))</span><span class="o">&gt;</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">workons2</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span><span class="o">&lt;</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="c1">#print &quot;Inside distance metric: &quot;, dat</span>
+        <span class="c1">#The misspelled words are the same, thus both are part of core or part of background</span>
+        <span class="n">ret</span><span class="o">+=</span> <span class="nb">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">),[</span><span class="n">pr2</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">])</span><span class="o">*</span><span class="n">pr1</span><span class="p">[</span><span class="n">w1</span><span class="p">]</span> <span class="o">+</span> <span class="nb">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">y</span><span class="p">)),[</span><span class="n">pr2</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">dat</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">pr1</span><span class="p">[</span><span class="n">w1</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="n">ret</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="abbreviation-based">
+<h3>Abbreviation based<a class="headerlink" href="#abbreviation-based" title="Permalink to this headline">¶</a></h3>
+<p>This method is optional. This makes first letter abbreviations from words such as Cafe Coffee Day to CCD and then makes comparisons. So if the two entries are ‘oyo’ and ‘on your own’ are two entries; they will be considered the same and all words will be asserted as common words in the same vein as the probabilistic model.</p>
+<p>This implementation is in <code class="docutils literal notranslate"><span class="pre">CoreBGgeneration.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">abbrv_func</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span><span class="n">s2</span><span class="p">,</span><span class="n">pr1</span><span class="p">,</span><span class="n">pr2</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If I abbreviate Cafe Coffee Day to CCD, they both are still the same, this creates abbreviations and checks if same.</span>
+
+<span class="sd">    If they are the same words then each of their probabilities are multiplied (of being core or background)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s1  (list): tokenized sentence from first table</span>
+<span class="sd">        s2  (list): tokenized sentence from second table</span>
+<span class="sd">        pr1 (dict): core probability distribution of the words of first table</span>
+<span class="sd">        pr2 (dict): core probability distribution of the words of second table</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: probability of match</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#n corresponds to number of words abbreviations</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span><span class="o">-</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">w1</span><span class="o">=</span><span class="n">s1</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">n</span><span class="p">]</span>
+        <span class="n">abbs</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">w</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span>
+        <span class="c1">#If abbreviation exists then those are same, and thus we can say that these words and </span>
+        <span class="c1">#their abbreviations are all part of the core or all part of background</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">abbs</span> <span class="ow">in</span> <span class="n">s2</span><span class="p">):</span>
+            <span class="n">ret</span><span class="o">+=</span> <span class="nb">reduce</span><span class="p">(</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">),[</span><span class="n">pr1</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span><span class="o">*</span><span class="n">pr2</span><span class="p">[</span><span class="n">abbs</span><span class="p">]</span> <span class="o">+</span> <span class="nb">reduce</span><span class="p">((</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">y</span><span class="p">)),[</span><span class="n">pr1</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">w1</span><span class="p">])</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">pr2</span><span class="p">[</span><span class="n">abbs</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">ret</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="cossine-similarity-based">
+<h3>Cossine Similarity based<a class="headerlink" href="#cossine-similarity-based" title="Permalink to this headline">¶</a></h3>
+<p>We convert hotel names and addresses into one hot vectors each, concatenate them to create a large vector and use that to calculate the cossine similarity. One hot implies a vector that is as long as the vocabulary of the document. So, if I have these three coffee places:
+1. Starbucks Coffee
+2. Kalmane Coffee
+3. Cafe Coffee Day</p>
+<p>We will have a vector of length 5 (each index corresponds to a word [Starbucks,Kalmane,Cafe,Coffee,Day]) So for the first entry (Starbucks Coffee) our vector will be ‘1’ on all indexes corresponding to the words in the name. So,
+Starbucks Coffee = [1,0,0,1,0].</p>
+<p>Similarly we do this one hot encoding to addresses. Then concatenate the two vectors and then compute the cosine similarity.</p>
+<p>The cosine similarity is just given by the cos of the angle made by these vectors in their n-dimensional space.</p>
+<div class="math notranslate nohighlight">
+\[\cos(\theta) = \frac{\vec{A}\cdot\vec{B}}{|A||B|}\]</div>
+<p>A and B are two vectors in this formula. This is included in the below function</p>
+<p>This implementation is in <code class="docutils literal notranslate"><span class="pre">Deduplication_algo.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_cossim</span><span class="p">(</span><span class="n">row2</span><span class="p">,</span><span class="n">row1</span><span class="p">,</span><span class="n">vect_name</span><span class="p">,</span><span class="n">vect_addr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets the cossine similarity between two vectors. It concatenates vectors of name and address into a larger dimensional vector and computes the cossine similarity</span>
+<span class="sd">    This function is used as an apply function.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        row2 (Series): A row of a dataframe2</span>
+<span class="sd">        row1 (Series): A row of a dataframe1</span>
+<span class="sd">        vect_name (dict): The cumulative vector dictionary made from makecumulativedict for names</span>
+<span class="sd">        vect_addr (dict): The cumulative vector dictionary made from makecumulativedict for addresses</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        float: The similarity measure</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">genvec2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">genreg_vec</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span><span class="n">vect_name</span><span class="p">),</span> <span class="n">genreg_vec</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">],</span><span class="n">vect_addr</span><span class="p">)])</span>
+    <span class="n">genvec1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">genreg_vec</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span><span class="n">vect_name</span><span class="p">),</span> <span class="n">genreg_vec</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">],</span><span class="n">vect_addr</span><span class="p">)])</span>
+    <span class="n">sim_measure_gen</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cosine</span><span class="p">(</span><span class="n">genvec1</span><span class="p">,</span><span class="n">genvec2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">sim_measure_gen</span><span class="p">):</span>
+                <span class="n">sim_measure_gen</span> <span class="o">=</span> <span class="mf">0.0</span>
+            
+    <span class="k">return</span> <span class="n">sim_measure_gen</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="lat-long-based">
+<h3>Lat-Long based<a class="headerlink" href="#lat-long-based" title="Permalink to this headline">¶</a></h3>
+<p>Last but not the least, a comparison of lat-long distances. The <a class="reference external" href="https://en.wikipedia.org/wiki/Haversine_formula">haversine formula</a> is used to produce a number between 0 and 1 telling me whether how close or far it is. I subtracted it from 1 to invert the distance basically making 1 right on top of each other and a 0 very far away from it. This 0-1 number is added simply to the final probability.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A better method might exist for adding to final probability</p>
+</div>
+<p>This implementation is in <code class="docutils literal notranslate"><span class="pre">Deduplication_algo.py</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">haverdist</span><span class="p">(</span><span class="n">row2</span><span class="p">,</span><span class="n">row1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A function that computes haversine distance between two pairs of latitudes and longitudes</span>
+<span class="sd">    Used as an apply function</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        row2 (Series): A row of a dataframe2</span>
+<span class="sd">        row1 (Series): A row of a dataframe1</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: 1-haversine_distance between entry in row1 and entry in row2. So 1 indicates on top of each other, while 0 indicates very far.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">latitude</span><span class="p">)</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">latitude</span><span class="p">)</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">longitude</span><span class="p">)</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">longitude</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+        
+    <span class="n">lat1</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">latitude</span><span class="p">)</span>
+    <span class="n">lon1</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">row1</span><span class="o">.</span><span class="n">longitude</span><span class="p">)</span>
+    <span class="n">lat2</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">latitude</span><span class="p">)</span>
+    <span class="n">lon2</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">row2</span><span class="o">.</span><span class="n">longitude</span><span class="p">)</span>
+
+    <span class="n">dlon</span> <span class="o">=</span> <span class="n">lon2</span> <span class="o">-</span> <span class="n">lon1</span>
+    <span class="n">dlat</span> <span class="o">=</span> <span class="n">lat2</span> <span class="o">-</span> <span class="n">lat1</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlat</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat1</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">lat2</span><span class="p">)</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">dlon</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">atan2</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">a</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">c</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The theory behind the model of Match-Maker</a><ul>
+<li><a class="reference internal" href="#cleaning-and-preparation-of-the-data">Cleaning and preparation of the data</a><ul>
+<li><a class="reference internal" href="#removing-punctuation-and-stopwords">Removing punctuation and stopwords</a></li>
+<li><a class="reference internal" href="#stemming-words">Stemming words</a></li>
+<li><a class="reference internal" href="#decoding-unicode-and-lowercasing">Decoding Unicode and lowercasing</a></li>
+<li><a class="reference internal" href="#tokenization">Tokenization</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#generating-probabilities">Generating Probabilities</a><ul>
+<li><a class="reference internal" href="#em-algorithm">EM Algorithm</a></li>
+<li><a class="reference internal" href="#p-w-probability-that-the-word-w-is-a-core">p(w)– Probability that the word (w) is a core</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#comparison-methods">Comparison methods</a><ul>
+<li><a class="reference internal" href="#probability-based">Probability based</a></li>
+<li><a class="reference internal" href="#edit-distance-based">Edit distance based</a></li>
+<li><a class="reference internal" href="#abbreviation-based">Abbreviation based</a></li>
+<li><a class="reference internal" href="#cossine-similarity-based">Cossine Similarity based</a></li>
+<li><a class="reference internal" href="#lat-long-based">Lat-Long based</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Match-Maker documentation!</a></li>
+      <li>Next: <a href="Code.html" title="next chapter">The Match-Maker documentation Code</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/Theory.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Shubhang Goswami.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/Theory.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
