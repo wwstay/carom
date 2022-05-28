@@ -299,6 +299,12 @@ cython_debug/
 /dedup_analysis/pickles
 /dedup_analysis/csv_files
 *.pk
+*.bson
+*.json
+.csv
+.scsv
+dedup_analysis/images
+/mongo-c-driver-1.21.1
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
