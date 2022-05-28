@@ -283,6 +283,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+
 .bson
 .json
 .tar
@@ -297,8 +298,6 @@ cython_debug/
 /dedup_analysis/*.scsv
 /dedup_analysis/pickles
 /dedup_analysis/csv_files
-*.tar.gz
-*.tar.*
 *.pk
 
 # PyCharm
