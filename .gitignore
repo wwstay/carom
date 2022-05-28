@@ -284,6 +284,8 @@ cython_debug/
 .tar
 /mongo-c-driver-1.21.1
 /csv_files
+dedup_analysis/images
+dedup_analysis/errordedup
 *.pk
 *.bson
 *.json
